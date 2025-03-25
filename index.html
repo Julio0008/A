@@ -42,6 +42,40 @@
           player.onGround = false;
         }
       }
+
+      function createObstacle() {
+        let size = 50;
+        let obstacle = { x: canvas.width, y: canvas.height - size - 10, width: size, height: size };
+        obstacles.push(obstacle);
+      }
+
+      function updateObstacles() {
+        for (let i = 0; I < obstacles.length; i++) {
+          obstacles[I].x -= speed;
+          if (obstacles[I].x = obstacles[I].width <0) {
+            obstacles.splice(i, 1);
+          }
+        }
+      }
+
+      function drawObstacles() {
+        ctx.fillStyle = "black";
+        obstacles.forEach(obstacle => ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height));
+      }
+
+      function checkCollision() {
+        for (let obstacle of obstacles) {
+          if (
+            player.x < obstacle.x + obstacle.width &&
+            player.x + player.width > obstacle.x &&
+            player.y < obstacle.y + obstacle.height &&
+            player.y + player.height > obstacle.y
+            ) {
+            alert("Game Over!")
+            document.location.reload();
+          }
+        }
+      }
     </script>
   </body>
 </html>
