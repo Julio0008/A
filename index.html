@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Side Scroller Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Falling Stars</title>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { background: skyblue; display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -14,93 +22,135 @@
         const ctx = canvas.getContext("2d");
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-
-        let player = { x: canvas.width / 2, y: canvas.height - 60, width: 30, height: 30, dx: 0, dy: 0, speed: 5, gravity: 1, jumpPower: -12, onGround: false };
-        let obstacles = [];
-        let offsetX = 0;
-
-        function drawPlayer() {
-            ctx.fillStyle = "red";
-            ctx.fillRect(player.x - offsetX, player.y, player.width, player.height);
+        
+        let stars = [];
+        let player = { x: canvas.width / 2, y: canvas.height - 50, width: 80, height: 10, speed: 10 };
+        let score = 0;
+        let lives = 3;
+        let gameOver = false;
+        let powerUps = [];
+        let shieldActive = false;
+        let shieldDuration = 0;
+        
+        function createStar() {
+            let star = {
+                x: Math.random() * canvas.width,
+                y: 0,
+                radius: 5 + Math.random() * 5,
+                speed: 2 + Math.random() * 3,
+                type: Math.random() > 0.85 ? "bad" : "good" // 15% chance of being a bad star
+            };
+            stars.push(star);
         }
-
-        function updatePlayer() {
-            player.dy += player.gravity;
-            player.y += player.dy;
-            if (player.y + player.height >= canvas.height - 10) {
-                player.y = canvas.height - 10 - player.height;
-                player.dy = 0;
-                player.onGround = true;
-            } else {
-                player.onGround = false;
-            }
-
-            player.x += player.dx;
-            offsetX += player.dx;
+        
+        function createPowerUp() {
+            let powerUp = {
+                x: Math.random() * canvas.width,
+                y: 0,
+                radius: 10,
+                speed: 3,
+                type: Math.random() > 0.5 ? "shield" : "bonus" // 50% shield, 50% bonus
+            };
+            powerUps.push(powerUp);
         }
-
-        function jump() {
-            if (player.onGround) {
-                player.dy = player.jumpPower;
-                player.onGround = false;
-            }
-        }
-
-        function createObstacle() {
-            let size = 30;
-            let obstacle = { x: canvas.width + offsetX, y: canvas.height - size - 10, width: size, height: size };
-            obstacles.push(obstacle);
-        }
-
-        function updateObstacles() {
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].x -= player.dx;
-                if (obstacles[i].x + obstacles[i].width < offsetX) {
-                    obstacles.splice(i, 1);
+        
+        function update() {
+            if (gameOver) return;
+            
+            stars.forEach((star, index) => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    stars.splice(index, 1);
+                    if (star.type === "good" && !shieldActive) lives--; // Lose life if missing a good star
+                    if (lives <= 0) gameOver = true;
                 }
-            }
-        }
-
-        function drawObstacles() {
-            ctx.fillStyle = "black";
-            obstacles.forEach(obstacle => ctx.fillRect(obstacle.x - offsetX, obstacle.y, obstacle.width, obstacle.height));
-        }
-
-        function checkCollision() {
-            for (let obstacle of obstacles) {
                 if (
-                    player.x < obstacle.x + obstacle.width &&
-                    player.x + player.width > obstacle.x &&
-                    player.y < obstacle.y + obstacle.height &&
-                    player.y + player.height > obstacle.y
+                    star.y + star.radius > player.y &&
+                    star.x > player.x &&
+                    star.x < player.x + player.width
                 ) {
-                    alert("Game Over!");
-                    document.location.reload();
+                    stars.splice(index, 1);
+                    if (star.type === "good") {
+                        score++;
+                    } else if (!shieldActive) {
+                        lives--; // Lose a life if catching a bad star
+                        if (lives <= 0) gameOver = true;
+                    }
                 }
+            });
+            
+            powerUps.forEach((powerUp, index) => {
+                powerUp.y += powerUp.speed;
+                if (powerUp.y > canvas.height) {
+                    powerUps.splice(index, 1);
+                }
+                if (
+                    powerUp.y + powerUp.radius > player.y &&
+                    powerUp.x > player.x &&
+                    powerUp.x < player.x + player.width
+                ) {
+                    powerUps.splice(index, 1);
+                    if (powerUp.type === "shield") {
+                        shieldActive = true;
+                        shieldDuration = 300;
+                    } else {
+                        score += 5; // Bonus score
+                    }
+                }
+            });
+            
+            if (shieldActive) {
+                shieldDuration--;
+                if (shieldDuration <= 0) shieldActive = false;
             }
         }
-
-        function gameLoop() {
+        
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawPlayer();
-            drawObstacles();
-            updatePlayer();
-            updateObstacles();
-            checkCollision();
-            requestAnimationFrame(gameLoop);
+            ctx.fillStyle = "white";
+            
+            stars.forEach(star => {
+                ctx.fillStyle = star.type === "good" ? "yellow" : "red";
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            powerUps.forEach(powerUp => {
+                ctx.fillStyle = powerUp.type === "shield" ? "blue" : "green";
+                ctx.beginPath();
+                ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            ctx.fillStyle = shieldActive ? "cyan" : "blue";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("Score: " + score, 10, 30);
+            ctx.fillText("Lives: " + lives, 10, 60);
+            ctx.fillText("Shield: " + (shieldActive ? "Active" : "Inactive"), 10, 90);
+            
+            if (gameOver) {
+                ctx.fillStyle = "red";
+                ctx.font = "40px Arial";
+                ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+            }
         }
-
-        document.addEventListener("keydown", (event) => {
-            if (event.code === "Space") jump();
-            if (event.code === "ArrowRight") player.dx = player.speed;
-            if (event.code === "ArrowLeft") player.dx = -player.speed;
+        
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver) requestAnimationFrame(gameLoop);
+        }
+        
+        document.addEventListener("mousemove", (event) => {
+            player.x = event.clientX - player.width / 2;
         });
-
-        document.addEventListener("keyup", (event) => {
-            if (event.code === "ArrowRight" || event.code === "ArrowLeft") player.dx = 0;
-        });
-
-        setInterval(createObstacle, 1500);
+        
+        setInterval(createStar, 500);
+        setInterval(createPowerUp, 7000); // Power-ups appear every 7 seconds
         gameLoop();
     </script>
 </body>
