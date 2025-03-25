@@ -16,7 +16,7 @@
         canvas {
             display: none;
         }
-        #rules, #gameOverScreen {
+        #rules {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -25,14 +25,11 @@
             padding: 20px;
             border-radius: 10px;
         }
-        #startButton, #restartButton {
+        #startButton {
             margin-top: 10px;
             padding: 10px 20px;
             font-size: 20px;
             cursor: pointer;
-        }
-        #gameOverScreen {
-            display: none;
         }
     </style>
 </head>
@@ -47,43 +44,23 @@
         <p>You have 3 lives. Survive as long as you can!</p>
         <button id="startButton">Start Game</button>
     </div>
-    <div id="gameOverScreen">
-        <h1>Game Over!</h1>
-        <p>Your Final Score: <span id="finalScore">0</span></p>
-        <button id="restartButton">Return to Title</button>
     <canvas id="gameCanvas"></canvas>
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const rulesScreen = document.getElementById("rules");
         const startButton = document.getElementById("startButton");
-        const gameOverScreen = document.getElementById("gameOverScreen");
-        const restartButton = document.getElementById("restartButton");
-        const finalScore = document.getElementById("finalScore");
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         
         let stars = [];
-        let player;
-        let score;
-        let lives;
-        let gameOver;
-        let powerUps;
-        let shieldActive;
-        let shieldDuration;
-
-        function resetGame() {
-            stars = [];
-            powerUps = [];
-            player = { x: canvas.width /2, y: canvas.height - 50, width: 80, height: 10, speed: 10 };
-            score = 0;
-            lives = 3;
-            gameOver = false;
-            shieldACtive = false;
-            shieldDuration = 0;
-            gameOverScreen.style.display = "none";
-            rulesScreen.style.display = "block";
-        }
+        let player = { x: canvas.width / 2, y: canvas.height - 50, width: 80, height: 10, speed: 10 };
+        let score = 0;
+        let lives = 3;
+        let gameOver = false;
+        let powerUps = [];
+        let shieldActive = false;
+        let shieldDuration = 0;
         
         function createStar() {
             let star = {
@@ -125,12 +102,7 @@
                         score++;
                     } else if (star.type === "bad" && !shieldActive) {
                         lives--;
-                        if (lives <= 0) {
-                            gameOver = true;
-                            finalScore.textContent = score;
-                            gameOverScreen.style.display = "block";
-                            canvas.style.display = "none";
-                        }
+                        if (lives <= 0) gameOver = true;
                     }
                 }
             });
@@ -187,7 +159,13 @@
             ctx.fillText("Score: " + score, 10, 30);
             ctx.fillText("Lives: " + lives, 10, 60);
             ctx.fillText("Shield: " + (shieldActive ? "Active" : "Inactive"), 10, 90);
+            
+            if (gameOver) {
+                ctx.fillStyle = "red";
+                ctx.font = "40px Arial";
+                ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
             }
+        }
         
         function gameLoop() {
             update();
@@ -206,8 +184,7 @@
             setInterval(createPowerUp, 7000);
             gameLoop();
         });
-
-        restartButton.addEventListener("click", resetGame);
     </script>
 </body>
 </html>
+
