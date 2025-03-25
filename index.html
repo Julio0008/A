@@ -15,14 +15,13 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        let player = { x: 50, y: canvas.height - 60, width: 30, height: 30, dy: 0, gravity: 1, jumpPower: -12, onGround: false };
+        let player = { x: canvas.width / 2, y: canvas.height - 60, width: 30, height: 30, dx: 0, dy: 0, speed: 5, gravity: 1, jumpPower: -12, onGround: false };
         let obstacles = [];
-        let speed = 4;
-        let isJumping = false;
+        let offsetX = 0;
 
         function drawPlayer() {
             ctx.fillStyle = "red";
-            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillRect(player.x - offsetX, player.y, player.width, player.height);
         }
 
         function updatePlayer() {
@@ -35,6 +34,9 @@
             } else {
                 player.onGround = false;
             }
+
+            player.x += player.dx;
+            offsetX += player.dx;
         }
 
         function jump() {
@@ -46,14 +48,14 @@
 
         function createObstacle() {
             let size = 30;
-            let obstacle = { x: canvas.width, y: canvas.height - size - 10, width: size, height: size };
+            let obstacle = { x: canvas.width + offsetX, y: canvas.height - size - 10, width: size, height: size };
             obstacles.push(obstacle);
         }
 
         function updateObstacles() {
             for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].x -= speed;
-                if (obstacles[i].x + obstacles[i].width < 0) {
+                obstacles[i].x -= player.dx;
+                if (obstacles[i].x + obstacles[i].width < offsetX) {
                     obstacles.splice(i, 1);
                 }
             }
@@ -61,7 +63,7 @@
 
         function drawObstacles() {
             ctx.fillStyle = "black";
-            obstacles.forEach(obstacle => ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height));
+            obstacles.forEach(obstacle => ctx.fillRect(obstacle.x - offsetX, obstacle.y, obstacle.width, obstacle.height));
         }
 
         function checkCollision() {
@@ -90,6 +92,12 @@
 
         document.addEventListener("keydown", (event) => {
             if (event.code === "Space") jump();
+            if (event.code === "ArrowRight") player.dx = player.speed;
+            if (event.code === "ArrowLeft") player.dx = -player.speed;
+        });
+
+        document.addEventListener("keyup", (event) => {
+            if (event.code === "ArrowRight" || event.code === "ArrowLeft") player.dx = 0;
         });
 
         setInterval(createObstacle, 1500);
