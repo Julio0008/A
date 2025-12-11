@@ -304,6 +304,9 @@
 	// community dealing uses placeCardToSlot (animated)
 	async function dealFlop(){
 		if(!proceedToNextStreet($('#deal-flop'))) return;
+		// disable the flop button immediately so it can't be re-pressed this hand
+		$('#deal-flop').disabled = true;
+
 		// burn + three
 		draw();
 		community.push(draw(), draw(), draw());
@@ -312,14 +315,11 @@
 			await new Promise(r=>setTimeout(r, 120));
 		}
 		$('#message').textContent = 'Flop dealt. New betting round.';
-		// update HUD and let CPUs react; always allow player to act after CPUs finish
 		updateHUD();
 		resolveAIActionsAsync(() => {
 			updateHUD();
 			if(!ended && !seats[2].folded){
-				// always let player act on the new street
 				enablePlayerActions();
-				// if everyone already matched, allow dealer button to move to next street
 				if(allActivePlayersMatched()) $('#deal-turn').disabled = false;
 			}
 		});
@@ -327,6 +327,9 @@
 
 	async function dealTurn(){
 		if(!proceedToNextStreet($('#deal-turn'))) return;
+		// disable the turn button immediately so it can't be re-pressed this hand
+		$('#deal-turn').disabled = true;
+
 		draw();
 		community.push(draw());
 		await placeCardToSlot(community[3], $$('.card-slot')[3]);
@@ -335,7 +338,6 @@
 		resolveAIActionsAsync(() => {
 			updateHUD();
 			if(!ended && !seats[2].folded){
-				// always re-enable player actions after CPUs react
 				enablePlayerActions();
 				if(allActivePlayersMatched()) $('#deal-river').disabled = false;
 			}
@@ -344,6 +346,9 @@
 
 	async function dealRiver(){
 		if(!proceedToNextStreet($('#deal-river'))) return;
+		// disable the river button immediately so it can't be re-pressed this hand
+		$('#deal-river').disabled = true;
+
 		draw();
 		community.push(draw());
 		await placeCardToSlot(community[4], $$('.card-slot')[4]);
@@ -352,7 +357,6 @@
 		resolveAIActionsAsync(() => {
 			updateHUD();
 			if(!ended && !seats[2].folded){
-				// allow player to act on the river as well
 				enablePlayerActions();
 				if(allActivePlayersMatched()) $('#showdown').disabled = false;
 			}
@@ -460,18 +464,22 @@
 	}
 
 	// Showdown and finishing
-	function finishHand(delayMs = 0){
+	function finishHand(delayMs = 1000){
+		// if a delay is requested, schedule a single timer and return
 		if(delayMs && delayMs > 0){
 			if(window.__finishHandTimer) clearTimeout(window.__finishHandTimer);
 			window.__finishHandTimer = setTimeout(()=> finishHand(0), delayMs);
 			return;
 		}
+		// clear any pending timer
 		if(window.__finishHandTimer){ clearTimeout(window.__finishHandTimer); window.__finishHandTimer = null; }
+
+		// disable action buttons and allow New Hand immediately
 		$('#check-call').disabled = true; $('#raise-btn').disabled = true; $('#allin-btn').disabled = true;
 		$('#deal-flop').disabled = true; $('#deal-turn').disabled = true; $('#deal-river').disabled = true; $('#showdown').disabled = true;
 		ended = true;
 		startNewHandDisabled(false);
-		// fold button controlled by enablePlayerActions / finished state
+		// fold button controlled elsewhere / by enablePlayerActions
 		$('#fold-btn').disabled = true;
 	}
 
@@ -512,6 +520,27 @@
 			$('#message').textContent = formatWinMessage(best.name, award);
 		}
 		$('#showdown').disabled = true;
+
+		// NEW: reset CPUs with 0 stack to new name and 1000 chips
+		for(let i=0; i<2; i++){
+			if(seats[i].stack <= 0){
+				const pool = AI_NAMES.slice();
+				const used = seats.map(s=>s.name);
+				let newName;
+				do {
+					newName = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+				} while(used.includes(newName));
+				seats[i].name = newName;
+				seats[i].stack = 1000;
+				// update DOM
+				const seatEl = document.getElementById('seat-'+(i+1));
+				if(seatEl){
+					seatEl.querySelector('.name').textContent = newName;
+					seatEl.querySelector('.stack-amt').textContent = 1000;
+				}
+			}
+		}
+
 		finishHand(delayMs);
 	}
 
@@ -668,6 +697,20 @@
 	}
 	function hideHandModal(){ const modal = document.getElementById('hands-modal'); if(!modal) return; modal.classList.add('hidden'); modal.setAttribute('aria-hidden','true'); }
 
+	// NEW: How to Play modal helpers
+	function showHowToPlayModal(){ 
+		const modal = document.getElementById('howtoplay-modal'); 
+		if(!modal) return; 
+		modal.classList.remove('hidden'); 
+		modal.setAttribute('aria-hidden','false'); 
+	}
+	function hideHowToPlayModal(){ 
+		const modal = document.getElementById('howtoplay-modal'); 
+		if(!modal) return; 
+		modal.classList.add('hidden'); 
+		modal.setAttribute('aria-hidden','true'); 
+	}
+
 	// Wire everything up
 	document.addEventListener('DOMContentLoaded', ()=>{
 		// assign AI names once
@@ -683,7 +726,7 @@
 		$('#deal-flop').addEventListener('click', ()=> dealFlop());
 		$('#deal-turn').addEventListener('click', ()=> dealTurn());
 		$('#deal-river').addEventListener('click', ()=> dealRiver());
-		$('#showdown').addEventListener('click', ()=> showdown(5000)); // player-initiated showdown delays new hand by ~5s
+		$('#showdown').addEventListener('click', ()=> showdown(1000)); // changed from 5000 to 1000 for 1-second cooldown
 		$('#check-call').addEventListener('click', ()=> playerCheckCall());
 		$('#raise-btn').addEventListener('click', ()=> playerRaise());
 		$('#fold-btn').addEventListener('click', ()=> playerFold());
@@ -696,6 +739,13 @@
 		if(closeBtn){ closeBtn.addEventListener('click', hideHandModal); }
 		const backdrop = document.querySelector('#hands-modal .modal-backdrop');
 		if(backdrop){ backdrop.addEventListener('click', hideHandModal); }
+
+		// NEW: Wire How to Play modal
+		const closeHowToPlayBtn = document.getElementById('close-howtoplay');
+		if(closeHowToPlayBtn){ closeHowToPlayBtn.addEventListener('click', hideHowToPlayModal); }
+		const howToPlayBackdrop = document.querySelector('#howtoplay-modal .modal-backdrop');
+		if(howToPlayBackdrop){ howToPlayBackdrop.addEventListener('click', hideHowToPlayModal); }
+		// Show How to Play on load (no need to explicitly call; modal starts visible)
 
 		$('#message').textContent = 'Ready. Press New Hand to deal.';
 	});
